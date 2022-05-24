@@ -28,8 +28,8 @@ parametry = [16, 32, 64, 128, 256, 512, 1024, 2048]
 n_estimators = [20]
 max_depth = [20]
 vectorizers = {
-    "countvectorizer": CountVectorizer,
-    "tfidfvectorizer": TfidfVectorizer
+    "Bag of Words": CountVectorizer,
+    "TFIDF": TfidfVectorizer
 }
 params = {'model__n_estimators': n_estimators,
           'model__max_depth': max_depth,
@@ -62,11 +62,15 @@ for key, vectorizer in vectorizers.items():
 for key, values in results.items():
     plt.boxplot(values.T)
     plt.xticks([1, 2, 3, 4, 5, 6, 7, 8],parametry)
+    plt.xlabel("liczba cech")
+    plt.ylabel("accuracy")
     plt.savefig(f"imgs/{key}_boxplot.png")
     plt.close()
 
 for key, values in results.items():
     plt.plot(parametry, values.mean(axis=1))
+plt.xlabel("liczba cech")
+plt.ylabel("accuracy")
 plt.legend(results.keys())
 plt.xscale('log')
 plt.xticks(parametry,parametry)
@@ -81,15 +85,25 @@ def is_better(ttest_results, alpha=0.05):
     else:
         return False
 
+dfs = {}
 for key, values in results.items():
     df = pd.DataFrame()
     df["num"] = parametry
-    df["results"] = list(results["tfidfvectorizer"])
+    df["results"] = list(values)
     df["mean_acc"] = [np.mean(r) for r in df["results"]]
     df["std_acc"] = [np.std(r) for r in df["results"]]
     df["better"] = \
         [[i for i, r in enumerate(df["results"]) if is_better(ttest_rel(result, r), alpha=0.05)] for result in df["results"]]
 
+    dfs[key] = df
     df = df.drop("results", axis=1)
+
     print(f"Wyniki testów statystycznych dla {key}:")
     print(tabulate(df, headers='keys'))
+
+bests = {}
+for key, values in dfs.items():
+    best_idx = values["mean_acc"].idxmax()
+    bests[key] = values.loc[best_idx]
+
+print(ttest_rel(bests["TFIDF"]["results"], bests["Bag of Words"]["results"]))
